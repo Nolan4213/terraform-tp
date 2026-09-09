@@ -1,18 +1,20 @@
-# Terraform TPs
+# TPs Terraform
 
-Collection of Terraform practical exercises (TPs). Each TP lives in its own
-top-level folder with its own Terraform configuration and README.
+Collection de travaux pratiques (TP) Terraform. Chaque TP a son propre
+dossier avec sa configuration Terraform et son README.
 
 ## TPs
 
-- [`tp-libvirt/`](./tp-libvirt) — Provision a Debian 12 VM on a local
-  libvirt/QEMU hypervisor (storage pool, base image, disk, cloud-init, VM).
+- [`tp-libvirt/`](./tp-libvirt) — Provisionne une VM Debian 12 sur un
+  hyperviseur libvirt/QEMU local (pool de stockage, image de base, disque,
+  cloud-init, VM).
 
-More TPs will be added here as new folders following the same pattern:
+D'autres TPs seront ajoutés ici sous forme de nouveaux dossiers suivant le
+même schéma :
 
 ```
-<repo root>/
-├── tp-<name>/
+<racine du repo>/
+├── tp-<nom>/
 │   ├── main.tf
 │   ├── ...
 │   └── README.md
@@ -21,9 +23,9 @@ More TPs will be added here as new folders following the same pattern:
 
 ## Conventions
 
-- One folder per TP, named `tp-<subject>`.
-- Each TP folder has its own `README.md` explaining what it provisions and
-  how to run it.
-- `terraform.tfstate`, `terraform.tfstate.backup`, and `.terraform/` are
-  never committed (see `.gitignore`) — they are local/environment-specific
-  and can hold sensitive data.
+- Un dossier par TP, nommé `tp-<sujet>`.
+- Chaque dossier de TP a son propre `README.md` expliquant ce qu'il
+  provisionne et comment l'exécuter.
+- `terraform.tfstate`, `terraform.tfstate.backup` et `.terraform/` ne sont
+  jamais commités (voir `.gitignore`) — fichiers locaux/spécifiques à
+  l'environnement, pouvant contenir des données sensibles.

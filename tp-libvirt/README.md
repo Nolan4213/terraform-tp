@@ -39,11 +39,29 @@ Une fois appliqué, récupérer l'IP de la VM avec :
 terraform output vm_ip
 ```
 
-Puis se connecter avec :
+Puis se connecter avec la clé dédiée `tp_vm` (présente dans `~/.ssh/` sur
+l'hôte) :
 
 ```bash
-ssh debian@<vm_ip>
+ssh -i ~/.ssh/tp_vm debian@<vm_ip>
 ```
+
+Depuis une autre machine que l'hôte, passer par l'hôte en jump :
+
+```bash
+ssh -J <user>@<hote_libvirt> -i ~/.ssh/tp_vm debian@<vm_ip>
+```
+
+> ⚠️ Attention au `virsh` par défaut : sur l'hôte, `virsh` sans option se
+> connecte à `qemu:///session` (vide), alors que la VM est créée par
+> Terraform sous `qemu:///system`. Utiliser `virsh -c qemu:///system` pour
+> voir/gérer la VM.
+
+> ⚠️ Après un redémarrage de l'hôte, la VM reste **arrêtée** (pas
+> d'autostart configuré). La redémarrer avec :
+> ```bash
+> virsh -c qemu:///system start tp-vm
+> ```
 
 Pour tout détruire :
 

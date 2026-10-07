@@ -1,0 +1,10 @@
+# Copier ce fichier en terraform.tfvars et adapter les valeurs.
+# terraform.tfvars ne doit jamais être commité (voir .gitignore).
+
+aws_region         = "eu-west-3"
+environment        = "dev"
+project_name       = "rocky-linux-tp"
+instance_type      = "t3.small"
+rocky_linux_ami_id = "ami-xxxxxxxxxxxxxxxxx" # AMI Rocky Linux 9.3 de la région ciblée
+key_name            = "ma-paire-de-cles"
+admin_cidr          = "203.0.113.42/32" # votre IP publique, jamais 0.0.0.0/0

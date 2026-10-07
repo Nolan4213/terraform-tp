@@ -1,0 +1,10 @@
+# Copier ce fichier en terraform.tfvars et adapter les valeurs.
+# terraform.tfvars ne doit jamais être commité (voir .gitignore).
+
+location              = "France Central"
+environment           = "dev"
+project_name          = "rocky-linux-tp"
+vm_size                = "Standard_B2s"
+admin_username         = "rockyadmin"
+admin_ssh_public_key   = "ssh-ed25519 AAAA... votre-cle-publique"
+admin_cidr             = "203.0.113.42/32" # votre IP publique, jamais 0.0.0.0/0

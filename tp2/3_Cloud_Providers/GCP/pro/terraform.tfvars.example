@@ -1,0 +1,13 @@
+# Copier ce fichier en terraform.tfvars et adapter les valeurs.
+# terraform.tfvars ne doit jamais être commité (voir .gitignore).
+
+gcp_project        = "mon-projet-gcp-id"
+gcp_region         = "europe-west1"
+gcp_zone           = "europe-west1-b"
+environment        = "dev"
+project_name       = "rocky-linux-tp"
+machine_cpus       = 2
+machine_memory_mb  = 2048
+ssh_username       = "rockyadmin"
+ssh_public_key     = "ssh-ed25519 AAAA... votre-cle-publique"
+admin_cidr         = "203.0.113.42/32" # votre IP publique, jamais 0.0.0.0/0

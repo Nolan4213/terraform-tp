@@ -87,6 +87,20 @@ sudo mkdir -p /srv/drbd && sudo mount /dev/drbd0 /srv/drbd
 cat /srv/drbd/hello.txt      # même contenu, répliqué depuis AWS
 ```
 
+## Validation réelle (03/11/2026)
+
+Testé de bout en bout : `apply` (24 ressources), synchro initiale du LV de
+1 Go en moins d'une minute, puis bascule AWS vers Azure. Le fichier écrit
+sur AWS est relu sur Azure après promotion. Le `destroy` a suivi.
+
+Deux problèmes rencontrés au premier essai, corrigés dans le template :
+- `GPG check FAILED` : ELRepo signe avec sa clé v2, que le paquet
+  `elrepo-release` de Rocky ne référence pas. Le template l'importe
+  explicitement.
+- `dnf` bloqué côté Azure : le `mirrorlist` d'ELRepo renvoyait vers un
+  miroir injoignable depuis `norwayeast`. Le template utilise `baseurl`
+  directement.
+
 ## Destruction
 
 ```bash

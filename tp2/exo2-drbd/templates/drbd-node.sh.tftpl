@@ -62,6 +62,10 @@ dnf -y install elrepo-release \
 # ELRepo signe désormais avec sa clé v2 (EAA31D4A), absente de la config du
 # dépôt fournie par le paquet elrepo-release de Rocky : import explicite.
 rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org /etc/pki/rpm-gpg/RPM-GPG-KEY-v2-elrepo.org
+# Le mirrorlist d'ELRepo renvoie vers des miroirs injoignables depuis
+# certaines régions (dnf bloqué sans fin depuis Azure norwayeast) :
+# on utilise directement baseurl (elrepo.org).
+sed -i 's|^mirrorlist=|#mirrorlist=|' /etc/yum.repos.d/elrepo.repo
 dnf -y install kmod-drbd9x drbd9x-utils
 modprobe drbd
 echo drbd > /etc/modules-load.d/drbd.conf

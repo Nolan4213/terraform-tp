@@ -8,14 +8,14 @@ providers, pour que chaque VM connaisse l'IP publique de son pair.
 ## Architecture
 
 ```
-            AWS eu-west-3 (Paris)                    Azure norwayeast (Oslo)
+         AWS eu-west-3 (Paris)                   Azure norwayeast (Oslo)
   ┌─────────────────────────────────┐      ┌─────────────────────────────────┐
   │ VPC 10.10.0.0/16 + IGW          │      │ VNet 10.20.0.0/16               │
-  │  drbd-aws  (t3.micro)           │      │  drbd-azure (Standard_B2ats_v2) │
-  │   EBS 4 Go -> vg_drbd/lv_drbd   │      │   disque 4 Go -> vg_drbd/lv_drbd│
-  │   /dev/drbd0  PRIMAIRE          │      │   /dev/drbd0  SECONDAIRE        │
-  │   XFS monté sur /srv/drbd       │      │                                 │
-  │  Elastic IP ────────────────────┼──────┼──── IP publique statique       │
+  │  drbd-aws (t3.micro)            │      │  drbd-azure (B2ats_v2)          │
+  │  EBS 4 Go -> vg_drbd/lv_drbd    │      │  disque 4 Go -> vg_drbd/lv_drbd │
+  │  /dev/drbd0  PRIMAIRE           │      │  /dev/drbd0  SECONDAIRE         │
+  │  XFS monté sur /srv/drbd        │      │                                 │
+  │ Elastic IP ─────────────────────┼──────┼──── IP publique statique        │
   └─────────────────────────────────┘ TCP  └─────────────────────────────────┘
                                       7789
 ```

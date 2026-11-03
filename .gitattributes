@@ -1,3 +1,5 @@
 # Scripts injectés via cloud-init : CRLF casserait bash sur les VM
 *.sh       text eol=lf
 *.tftpl    text eol=lf
+*.pdf binary
+*.png binary

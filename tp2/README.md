@@ -2,6 +2,13 @@
 
 Sujet complet : [`tp_2_terraform.pdf`](./tp_2_terraform.pdf).
 
+## Rendus PDF
+
+Version PDF des deux README, captures incluses :
+
+- [`rendus/TP2-exercice1-terraform-multicloud.pdf`](./rendus/TP2-exercice1-terraform-multicloud.pdf)
+- [`rendus/TP2-exercice2-drbd-aws-azure.pdf`](./rendus/TP2-exercice2-drbd-aws-azure.pdf)
+
 ## Exercice 1 — Fichiers conformes à des attentes professionnelles
 
 Voir [`3_Cloud_Providers/README.md`](./3_Cloud_Providers/README.md).

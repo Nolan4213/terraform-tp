@@ -89,82 +89,68 @@ cat /srv/drbd/hello.txt      # même contenu, répliqué depuis AWS
 
 ## Validation réelle (03/11/2026)
 
-Testé de bout en bout : `apply` (24 ressources), synchro initiale du LV de
-1 Go en moins d'une minute, puis bascule AWS vers Azure. Le fichier écrit
-sur AWS est relu sur Azure après promotion. Le `destroy` a suivi.
+Deux déploiements complets ont été faits.
 
-Deux problèmes rencontrés au premier essai, corrigés dans le template :
-- `GPG check FAILED` : ELRepo signe avec sa clé v2, que le paquet
-  `elrepo-release` de Rocky ne référence pas. Le template l'importe
-  explicitement.
-- `dnf` bloqué côté Azure : le `mirrorlist` d'ELRepo renvoyait vers un
-  miroir injoignable depuis `norwayeast`. Le template utilise `baseurl`
-  directement.
+1. **Premier `apply`** : il a révélé deux problèmes dans le script de démarrage.
+   - `GPG check FAILED` : ELRepo signe avec sa clé v2, que le paquet `elrepo-release` de Rocky ne référence pas. Le template importe la clé explicitement.
+   - `dnf` bloqué côté Azure : le `mirrorlist` d'ELRepo renvoyait vers un miroir injoignable depuis `norwayeast`. Le template passe par `baseurl`.
+2. **Second `apply`**, avec le template corrigé : tout s'enchaîne sans intervention manuelle. Les captures ci-dessous viennent de ce déploiement.
+
+Le bootstrap AWS dure environ 12 minutes, contre 3 côté Azure. `cpu_credits = "standard"` évite toute facturation CPU, mais bride le `t3.micro` à 10 % par vCPU. La reconstruction de l'initramfs par `dracut`, à l'installation du module DRBD, est donc lente.
 
 ## Preuves
 
-### Ressources déployées
+### 1. Déploiement Terraform
 
-Instance AWS `drbd-tp-aws` (`t3.micro`, `eu-west-3a`) en cours d'exécution, 3/3 vérifications :
+`terraform apply` : 24 ressources créées, IP publiques des deux nœuds en sortie.
 
-![Instance AWS](./captures/01-aws-instance-running.png)
+![terraform apply](./captures/03-terraform-apply.png)
 
-Elastic IP associée (IP utilisée par le pair Azure pour DRBD) :
+Instance AWS `drbd-tp-aws` (`t3.micro`, `eu-west-3a`) en cours d'exécution, avec son Elastic IP :
 
-![Elastic IP AWS](./captures/02-aws-elastic-ip.png)
+![Instance AWS](./captures/01-aws-instance-eip.png)
 
 Groupe de ressources Azure `drbd-tp-rg` (Norway East) : VM, disque de données, IP publique, NIC, NSG, disque OS, VNet :
 
-![Ressources Azure](./captures/03-azure-resource-group.png)
+![Ressources Azure](./captures/02-azure-resource-group.png)
 
-### Réplication et bascule (sorties relevées pendant le test)
+### 2. Bootstrap (cloud-init), journal `/var/log/drbd-bootstrap.log` côté AWS
 
-Synchro initiale en cours, côté AWS :
+Création de la pile LVM sur le disque de données (`/dev/nvme1n1`, PV, `vg_drbd`, `lv_drbd`) :
 
-```
-r0 role:Primary
-  disk:UpToDate open:yes
-  drbd-azure role:Secondary
-    replication:SyncSource peer-disk:Inconsistent done:65.82
-```
+![Bootstrap LVM](./captures/04-bootstrap-aws-lvm.png)
 
-Poignée de main DRBD entre les deux clouds (`journalctl -k`, côté Azure) :
+Installation de DRBD 9 depuis ELRepo (`kmod-drbd9x`, `drbd9x-utils`) :
 
-```
-drbd r0 drbd-aws: Handshake to peer 0 successful: Agreed network protocol version 125
-drbd r0 drbd-aws: conn( Connecting -> Connected ) peer( Unknown -> Primary ) [remote]
-```
+![Bootstrap DRBD](./captures/05-bootstrap-aws-drbd-install.png)
 
-Synchro terminée, côté Azure :
+Métadonnées DRBD, XFS sur `/dev/drbd0`, promotion en primaire. La synchro initiale vers Azure démarre (`SyncSource ... done:0.15`) :
 
-```
-r0 role:Secondary
-  disk:UpToDate open:no
-  drbd-aws role:Primary
-    peer-disk:UpToDate
-```
+![Fin du bootstrap](./captures/06-bootstrap-aws-fin-synchro.png)
 
-Bascule : écriture sur AWS, démontage et passage en secondaire, puis promotion d'Azure :
+### 3. Réplication établie
 
-```
-# drbd-aws
-Écrit sur drbd-aws le 2026-11-03T09:40:19+00:00
-test bascule 2026-11-03T09:49:35+00:00
-r0 role:Secondary
-  disk:UpToDate open:no
-  drbd-azure role:Secondary
-    peer-disk:UpToDate
+Les deux nœuds sont `UpToDate` : AWS primaire, Azure secondaire.
 
-# drbd-azure, après drbdadm primary + mount
-Écrit sur drbd-aws le 2026-11-03T09:40:19+00:00
-test bascule 2026-11-03T09:49:35+00:00
-r0 role:Primary
-  disk:UpToDate open:yes
-  drbd-aws role:Secondary
-    peer-disk:UpToDate
-```
+![Statut AWS](./captures/07-drbd-status-aws.png)
+![Statut Azure](./captures/07-drbd-status-azure.png)
 
-Le fichier écrit sur AWS est relu à l'identique sur Azure.
+### 4. Pile de stockage identique sur les deux clouds
+
+Disque de 4 Go, `vg_drbd-lv_drbd` (1 Go), `drbd0`. Sur AWS, `drbd0` est monté sur `/srv/drbd` (primaire) ; sur Azure, il n'est pas monté (secondaire). Le nom du disque diffère (`nvme1n1` / `sdb`) : le script le repère par sa taille.
+
+![Stockage AWS](./captures/08-stockage-aws.png)
+![Stockage Azure](./captures/08-stockage-azure.png)
+
+### 5. Bascule AWS vers Azure
+
+Sur AWS : écriture dans `hello.txt`, démontage, passage en secondaire.
+
+![Bascule AWS](./captures/09-bascule-aws.png)
+
+Sur Azure : promotion en primaire, montage. Le fichier écrit sur AWS est relu à l'identique, et AWS est devenu secondaire `UpToDate`.
+
+![Bascule Azure](./captures/10-bascule-azure.png)
 
 ## Destruction
 

@@ -101,6 +101,71 @@ Deux problèmes rencontrés au premier essai, corrigés dans le template :
   miroir injoignable depuis `norwayeast`. Le template utilise `baseurl`
   directement.
 
+## Preuves
+
+### Ressources déployées
+
+Instance AWS `drbd-tp-aws` (`t3.micro`, `eu-west-3a`) en cours d'exécution, 3/3 vérifications :
+
+![Instance AWS](./captures/01-aws-instance-running.png)
+
+Elastic IP associée (IP utilisée par le pair Azure pour DRBD) :
+
+![Elastic IP AWS](./captures/02-aws-elastic-ip.png)
+
+Groupe de ressources Azure `drbd-tp-rg` (Norway East) : VM, disque de données, IP publique, NIC, NSG, disque OS, VNet :
+
+![Ressources Azure](./captures/03-azure-resource-group.png)
+
+### Réplication et bascule (sorties relevées pendant le test)
+
+Synchro initiale en cours, côté AWS :
+
+```
+r0 role:Primary
+  disk:UpToDate open:yes
+  drbd-azure role:Secondary
+    replication:SyncSource peer-disk:Inconsistent done:65.82
+```
+
+Poignée de main DRBD entre les deux clouds (`journalctl -k`, côté Azure) :
+
+```
+drbd r0 drbd-aws: Handshake to peer 0 successful: Agreed network protocol version 125
+drbd r0 drbd-aws: conn( Connecting -> Connected ) peer( Unknown -> Primary ) [remote]
+```
+
+Synchro terminée, côté Azure :
+
+```
+r0 role:Secondary
+  disk:UpToDate open:no
+  drbd-aws role:Primary
+    peer-disk:UpToDate
+```
+
+Bascule : écriture sur AWS, démontage et passage en secondaire, puis promotion d'Azure :
+
+```
+# drbd-aws
+Écrit sur drbd-aws le 2026-11-03T09:40:19+00:00
+test bascule 2026-11-03T09:49:35+00:00
+r0 role:Secondary
+  disk:UpToDate open:no
+  drbd-azure role:Secondary
+    peer-disk:UpToDate
+
+# drbd-azure, après drbdadm primary + mount
+Écrit sur drbd-aws le 2026-11-03T09:40:19+00:00
+test bascule 2026-11-03T09:49:35+00:00
+r0 role:Primary
+  disk:UpToDate open:yes
+  drbd-aws role:Secondary
+    peer-disk:UpToDate
+```
+
+Le fichier écrit sur AWS est relu à l'identique sur Azure.
+
 ## Destruction
 
 ```bash

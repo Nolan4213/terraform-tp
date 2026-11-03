@@ -171,6 +171,14 @@ Security group AWS : trois règles entrantes seulement, port 7789, ICMP et SSH 2
 
 Les identifiants de compte AWS et d'abonnement Azure sont masqués sur les captures.
 
+### 8. Nettoyage
+
+```
+Destroy complete! Resources: 24 destroyed.
+```
+
+Contrôle après le `destroy` : state Terraform vide. Côté AWS, aucune instance, aucun volume, aucune Elastic IP, aucune NAT Gateway, aucun snapshot, aucun VPC ni clé `drbd-tp`, dans aucune région. Côté Azure, `drbd-tp-rg` a disparu ; il ne reste que `NetworkWatcherRG`, créé automatiquement par Azure et gratuit.
+
 ## Destruction
 
 ```bash

@@ -152,6 +152,25 @@ Sur Azure : promotion en primaire, montage. Le fichier écrit sur AWS est relu �
 
 ![Bascule Azure](./captures/10-bascule-azure.png)
 
+### 6. Configuration DRBD : IP privée locale, IP publique du pair
+
+Les deux fichiers `/etc/drbd.d/r0.res` diffèrent volontairement. Chaque nœud écoute sur sa propre IP privée (`10.10.1.189` sur AWS, `10.20.1.4` sur Azure) et joint son pair sur l'IP publique de celui-ci, à cause du NAT 1:1 des deux clouds.
+
+![r0.res AWS](./captures/11-drbd-config-aws.png)
+![r0.res Azure](./captures/11-drbd-config-azure.png)
+
+### 7. Filtrage réseau
+
+NSG Azure : SSH ouvert uniquement à l'IP d'administration, port DRBD 7789 et ICMP ouverts uniquement à l'IP publique AWS (`/32`). Tout le reste est refusé (`DenyAllInBound`).
+
+![NSG Azure](./captures/12-azure-nsg.png)
+
+Security group AWS : trois règles entrantes seulement, port 7789, ICMP et SSH 22. Les sources, en `/32`, sont définies dans `aws.tf` : l'IP publique Azure pour 7789 et ICMP, l'IP d'administration pour 22.
+
+![Security group AWS](./captures/12-aws-security-group.png)
+
+Les identifiants de compte AWS et d'abonnement Azure sont masqués sur les captures.
+
 ## Destruction
 
 ```bash

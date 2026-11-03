@@ -50,13 +50,18 @@ done
 [ -n "$DISK" ] || { echo "Disque de données introuvable"; exit 1; }
 
 command -v pvcreate >/dev/null || dnf -y install lvm2
-pvcreate "$DISK"
-vgcreate "$VG" "$DISK"
-lvcreate -n "$LV" -L "$LV_SIZE" "$VG"
+if ! vgs "$VG" >/dev/null 2>&1; then # idempotent : relance possible du script
+  pvcreate "$DISK"
+  vgcreate "$VG" "$DISK"
+  lvcreate -n "$LV" -L "$LV_SIZE" "$VG"
+fi
 
 # --- 2. DRBD 9 ------------------------------------------------------------
 dnf -y install elrepo-release \
   || dnf -y install https://www.elrepo.org/elrepo-release-9.el9.elrepo.noarch.rpm
+# ELRepo signe désormais avec sa clé v2 (EAA31D4A), absente de la config du
+# dépôt fournie par le paquet elrepo-release de Rocky : import explicite.
+rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org /etc/pki/rpm-gpg/RPM-GPG-KEY-v2-elrepo.org
 dnf -y install kmod-drbd9x drbd9x-utils
 modprobe drbd
 echo drbd > /etc/modules-load.d/drbd.conf

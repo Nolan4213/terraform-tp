@@ -1,0 +1,8 @@
+# Copier en terraform.tfvars (jamais commité, voir .gitignore).
+
+azure_subscription_id = "00000000-0000-0000-0000-000000000000" # az account show --query id -o tsv
+
+# Optionnel : laissé vide, l'IP publique courante est détectée (/32).
+# admin_cidr = "203.0.113.42/32"
+
+# ssh_public_key_path = "~/.ssh/tp_vm.pub"

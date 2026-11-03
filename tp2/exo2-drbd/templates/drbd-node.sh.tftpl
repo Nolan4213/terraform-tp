@@ -1,0 +1,120 @@
+#!/bin/bash
+# Premier démarrage d'un nœud DRBD (rendu par templatefile(), exécuté par
+# cloud-init sur AWS et Azure). Étapes :
+#   1. LVM : disque de données -> PV -> VG -> LV (périphérique sous-jacent DRBD)
+#   2. DRBD 9 depuis ELRepo (kmod-drbd9x + drbd9x-utils)
+#   3. Ressource DRBD entre les deux clouds, via les IP publiques
+#   4. Nœud primaire : promotion, XFS, montage
+# Journal : /var/log/drbd-bootstrap.log
+set -euo pipefail
+exec > >(tee -a /var/log/drbd-bootstrap.log) 2>&1
+
+NODE_NAME="${node_name}"
+ROLE="${role}"
+MY_PUBLIC_IP="${public_ip}"
+RES="${resource}"
+PORT="${port}"
+VG="${vg_name}"
+LV="${lv_name}"
+LV_SIZE="${lv_size}"
+MOUNT_POINT="${mount_point}"
+DISK_BYTES=$(( ${disk_size_gb} * 1024 * 1024 * 1024 ))
+AWS_NAME="${aws_name}"
+AZURE_NAME="${azure_name}"
+AWS_IP="${aws_ip}"
+AZURE_IP="${azure_ip}"
+
+echo "=== $(date -Is) bootstrap $NODE_NAME ($ROLE)"
+hostnamectl set-hostname "$NODE_NAME"
+
+# --- Attente de l'IP publique définitive ---------------------------------
+# Sur AWS l'Elastic IP est associée juste après le lancement : on attend
+# qu'elle soit effective avant tout téléchargement (sinon coupure réseau).
+for _ in $(seq 1 60); do
+  [ "$(curl -s --max-time 5 https://checkip.amazonaws.com || true)" = "$MY_PUBLIC_IP" ] && break
+  echo "Attente de l'IP publique $MY_PUBLIC_IP..."
+  sleep 5
+done
+
+# --- 1. LVM ---------------------------------------------------------------
+# Disque de données repéré par sa taille (nvme1n1 sur AWS, sdX sur Azure).
+find_data_disk() {
+  lsblk -dbnpo NAME,SIZE,TYPE | awk -v b="$DISK_BYTES" '$3=="disk" && $2==b {print $1; exit}'
+}
+for _ in $(seq 1 60); do # sur Azure le disque est attaché après la VM
+  DISK="$(find_data_disk)"
+  [ -n "$DISK" ] && break
+  echo "Attente du disque de données..."
+  sleep 10
+done
+[ -n "$DISK" ] || { echo "Disque de données introuvable"; exit 1; }
+
+command -v pvcreate >/dev/null || dnf -y install lvm2
+pvcreate "$DISK"
+vgcreate "$VG" "$DISK"
+lvcreate -n "$LV" -L "$LV_SIZE" "$VG"
+
+# --- 2. DRBD 9 ------------------------------------------------------------
+dnf -y install elrepo-release \
+  || dnf -y install https://www.elrepo.org/elrepo-release-9.el9.elrepo.noarch.rpm
+dnf -y install kmod-drbd9x drbd9x-utils
+modprobe drbd
+echo drbd > /etc/modules-load.d/drbd.conf
+
+if systemctl is-active -q firewalld; then
+  firewall-cmd --permanent --add-port="$PORT/tcp"
+  firewall-cmd --reload
+fi
+
+# --- 3. Ressource DRBD ----------------------------------------------------
+# Chaque VM ne voit que son IP privée (NAT 1:1 du cloud). DRBD doit écouter
+# sur l'IP locale et joindre le pair sur son IP publique : la section du nœud
+# local porte l'IP privée, celle du pair son IP publique.
+LOCAL_IP="$(ip -4 -o route get 1.1.1.1 | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')"
+if [ "$NODE_NAME" = "$AWS_NAME" ]; then
+  AWS_ADDR="$LOCAL_IP"; AZURE_ADDR="$AZURE_IP"
+else
+  AWS_ADDR="$AWS_IP";   AZURE_ADDR="$LOCAL_IP"
+fi
+
+cat > "/etc/drbd.d/$RES.res" <<EOF
+resource $RES {
+  device    /dev/drbd0;
+  disk      /dev/$VG/$LV;
+  meta-disk internal;
+
+  net {
+    protocol    C;       # synchrone : écriture validée sur les 2 nœuds
+    verify-alg  sha256;  # permet "drbdadm verify $RES"
+  }
+
+  on $AWS_NAME {
+    node-id 0;
+    address $AWS_ADDR:$PORT;
+  }
+
+  on $AZURE_NAME {
+    node-id 1;
+    address $AZURE_ADDR:$PORT;
+  }
+}
+EOF
+
+drbdadm create-md --force "$RES" <<< "yes"
+drbdadm up "$RES"
+systemctl enable drbd
+
+# --- 4. Promotion du primaire ---------------------------------------------
+# Le primaire est forcé "UpToDate" : la synchro initiale part vers le
+# secondaire dès que la connexion s'établit.
+if [ "$ROLE" = "primary" ]; then
+  drbdadm primary --force "$RES"
+  mkfs.xfs /dev/drbd0
+  mkdir -p "$MOUNT_POINT"
+  mount /dev/drbd0 "$MOUNT_POINT"
+  echo "Écrit sur $NODE_NAME le $(date -Is)" > "$MOUNT_POINT/hello.txt"
+fi
+
+drbdadm status "$RES" || true
+echo "=== $(date -Is) bootstrap terminé"
+touch /var/log/drbd-bootstrap.done

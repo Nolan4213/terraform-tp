@@ -1,7 +1,15 @@
+variable "subscription_id" {
+  description = "ID de l'abonnement Azure (az account show --query id -o tsv)"
+  type        = string
+}
+
 variable "location" {
   description = "Région Azure de déploiement"
   type        = string
-  default     = "France Central"
+  # Les abonnements « Azure for Students » imposent une liste de régions et
+  # n'ouvrent pas la série B en France Central : Norway East est la région
+  # autorisée la plus proche où elle est disponible.
+  default = "norwayeast"
 }
 
 variable "environment" {
@@ -18,11 +26,11 @@ variable "project_name" {
 
 variable "vm_size" {
   description = <<-EOT
-    Taille de la VM. Azure ne propose pas de SKU B-series exact 2 vCPU / 2 Go
-    RAM : Standard_B2s (2 vCPU / 4 Go) est le plus proche disponible.
+    Taille de la VM. Azure ne propose pas de SKU exact 2 vCPU / 2 Go RAM :
+    Standard_B2als_v2 (2 vCPU / 4 Go) est la plus proche disponible.
   EOT
   type        = string
-  default     = "Standard_B2s"
+  default     = "Standard_B2als_v2"
 }
 
 variable "admin_username" {
@@ -39,6 +47,12 @@ variable "admin_ssh_public_key" {
 variable "admin_cidr" {
   description = "Bloc CIDR autorisé à se connecter en SSH (ex: votre IP publique en /32) — ne jamais laisser 0.0.0.0/0"
   type        = string
+}
+
+variable "rocky_image_version" {
+  description = "Version de l'image Marketplace resf:rockylinux-x86_64:9-base (9.3 = 9.3.20231113, ou \"latest\")"
+  type        = string
+  default     = "9.3.20231113"
 }
 
 variable "os_disk_size_gb" {

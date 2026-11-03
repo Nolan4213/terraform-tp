@@ -4,6 +4,12 @@ variable "aws_region" {
   default     = "eu-west-3"
 }
 
+variable "vpc_cidr" {
+  description = "Plage d'adresses du VPC dédié"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
 variable "environment" {
   description = "Nom de l'environnement (dev, staging, prod...)"
   type        = string
@@ -22,9 +28,14 @@ variable "instance_type" {
   default     = "t3.small"
 }
 
-variable "rocky_linux_ami_id" {
-  description = "AMI Rocky Linux 9.3 pour la région ciblée (voir https://rockylinux.org/cloud-images) — pas de valeur par défaut, l'AMI est spécifique à chaque région"
+variable "rocky_ami_name_pattern" {
+  description = <<-EOT
+    Motif de nom de l'AMI Rocky Linux officielle (compte RESF 792107900819).
+    Les AMI 9.3 ne sont plus publiées : Rocky ne maintient que la dernière
+    version mineure de la branche 9, donc on prend la plus récente 9.x.
+  EOT
   type        = string
+  default     = "Rocky-9-EC2-Base-9.*"
 }
 
 variable "key_name" {

@@ -1,0 +1,51 @@
+#!/bin/bash
+# Script de premier démarrage commun aux 3 providers (rendu par templatefile()).
+# Regroupe les disques de données dans un VG LVM et crée un LV formaté en XFS.
+# Idempotent : sans effet si le VG existe déjà (GCP le relance à chaque boot).
+set -euo pipefail
+exec > >(tee -a /var/log/lvm-setup.log) 2>&1
+
+VG="${vg_name}"
+LV="${lv_name}"
+MOUNT_POINT="${mount_point}"
+EXPECTED_DISKS=${disk_count}
+DISK_BYTES=$(( ${disk_size_gb} * 1024 * 1024 * 1024 ))
+
+if vgs "$VG" >/dev/null 2>&1; then
+  echo "VG $VG déjà présent, rien à faire."
+  exit 0
+fi
+
+# Sélection des disques de données : bonne taille, sans partition, non montés.
+# Le nom des périphériques varie selon le cloud (nvme1n1, sdc, sdb...), d'où
+# une détection par caractéristiques plutôt qu'un chemin codé en dur.
+find_data_disks() {
+  lsblk -dbnpo NAME,SIZE,TYPE | while read -r name size type; do
+    [ "$type" = "disk" ] || continue
+    [ "$size" = "$DISK_BYTES" ] || continue
+    [ "$(lsblk -nro NAME "$name" | wc -l)" -eq 1 ] || continue # pas de partition
+    [ -z "$(lsblk -nro MOUNTPOINT "$name")" ] || continue
+    echo "$name"
+  done
+}
+
+# Sur Azure et GCP les disques peuvent être attachés après le premier boot.
+for _ in $(seq 1 60); do
+  mapfile -t DISKS < <(find_data_disks)
+  [ "$${#DISKS[@]}" -ge "$EXPECTED_DISKS" ] && break
+  echo "Attente des disques de données ($${#DISKS[@]}/$EXPECTED_DISKS)..."
+  sleep 10
+done
+[ "$${#DISKS[@]}" -ge "$EXPECTED_DISKS" ] || { echo "Disques introuvables"; exit 1; }
+
+command -v pvcreate >/dev/null || dnf -y install lvm2
+
+pvcreate "$${DISKS[@]}"
+vgcreate "$VG" "$${DISKS[@]}"
+lvcreate -n "$LV" -l 100%FREE "$VG"
+mkfs.xfs "/dev/$VG/$LV"
+
+mkdir -p "$MOUNT_POINT"
+echo "/dev/$VG/$LV $MOUNT_POINT xfs defaults,nofail 0 0" >> /etc/fstab
+mount "$MOUNT_POINT"
+echo "LVM prêt : /dev/$VG/$LV monté sur $MOUNT_POINT"

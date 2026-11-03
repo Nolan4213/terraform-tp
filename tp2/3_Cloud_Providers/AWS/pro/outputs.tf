@@ -3,6 +3,11 @@ output "instance_id" {
   value       = aws_instance.vm.id
 }
 
+output "ami" {
+  description = "AMI Rocky Linux retenue"
+  value       = "${data.aws_ami.rocky.id} (${data.aws_ami.rocky.name})"
+}
+
 output "public_ip" {
   description = "Adresse IP publique de la VM"
   value       = aws_instance.vm.public_ip

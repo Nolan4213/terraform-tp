@@ -10,7 +10,7 @@ locals {
     project     = var.project_name
     environment = var.environment
     managed_by  = "terraform"
-    os          = "rocky-linux-9-3"
+    os          = "rocky-linux-9"
   }
 }
 
@@ -76,4 +76,15 @@ resource "google_compute_instance" "vm" {
   metadata = {
     ssh-keys = "${var.ssh_username}:${var.ssh_public_key}"
   }
+
+  # Les images Rocky de GCP n'utilisent pas cloud-init : le script LVM passe
+  # par le startup-script de l'agent invité (rejoué à chaque boot, d'où un
+  # script idempotent).
+  metadata_startup_script = templatefile("${path.module}/../../shared/lvm-setup.sh.tftpl", {
+    vg_name      = "vg_data"
+    lv_name      = "lv_data"
+    mount_point  = "/data"
+    disk_count   = var.lvm_disk_count
+    disk_size_gb = var.lvm_disk_size_gb
+  })
 }

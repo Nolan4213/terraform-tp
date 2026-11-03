@@ -20,8 +20,14 @@ Structure par provider :
 ├── main.tf       # fichier d'origine (ChatGPT), inchangé
 └── pro/          # version corrigée : versions.tf, variables.tf, main.tf,
                    # outputs.tf, terraform.tfvars.example
+3_Cloud_Providers/shared/lvm-setup.sh.tftpl   # script LVM commun aux 3 clouds
 ```
 
 ## Exercice 2 — Réplication DRBD multi-cloud
 
-Pas encore traité.
+Voir [`exo2-drbd/README.md`](./exo2-drbd/README.md).
+
+Un LV LVM est répliqué par DRBD 9 entre une VM Rocky Linux 9 chez AWS
+(`eu-west-3`) et une chez Azure (`norwayeast`), créées par un seul root
+module Terraform. Le dimensionnement est volontairement minimal pour
+consommer le moins de crédits possible.

@@ -1,5 +1,6 @@
 provider "azurerm" {
   features {}
+  subscription_id = var.subscription_id # obligatoire depuis azurerm 4.x
 }
 
 locals {
@@ -9,7 +10,7 @@ locals {
     project     = var.project_name
     environment = var.environment
     managed_by  = "terraform"
-    os          = "rocky-linux-9.3"
+    os          = "rocky-linux-9"
   }
 }
 
@@ -112,12 +113,32 @@ resource "azurerm_linux_virtual_machine" "vm" {
     disk_size_gb         = var.os_disk_size_gb
   }
 
+  # L'image "openlogic/rocky-linux/9.3" de l'original n'existe pas. L'image
+  # officielle est publiée par la RESF sur le Marketplace : gratuite, mais
+  # ses conditions doivent être acceptées une fois par abonnement
+  # (az vm image terms accept --publisher resf --offer rockylinux-x86_64 --plan 9-base).
   source_image_reference {
-    publisher = "openlogic"
-    offer     = "rocky-linux"
-    sku       = "9.3"
-    version   = "latest"
+    publisher = "resf"
+    offer     = "rockylinux-x86_64"
+    sku       = "9-base"
+    version   = var.rocky_image_version
   }
+
+  plan {
+    publisher = "resf"
+    product   = "rockylinux-x86_64"
+    name      = "9-base"
+  }
+
+  # Création du VG/LV au premier démarrage (les disques sont attachés après
+  # la VM : le script attend leur apparition).
+  custom_data = base64encode(templatefile("${path.module}/../../shared/lvm-setup.sh.tftpl", {
+    vg_name      = "vg_data"
+    lv_name      = "lv_data"
+    mount_point  = "/data"
+    disk_count   = var.lvm_disk_count
+    disk_size_gb = var.lvm_disk_size_gb
+  }))
 }
 
 resource "azurerm_managed_disk" "lvm" {

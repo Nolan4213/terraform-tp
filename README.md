@@ -8,9 +8,9 @@ dossier avec sa configuration Terraform et son README.
 - [`tp-libvirt/`](./tp-libvirt) — Provisionne une VM Debian 12 sur un
   hyperviseur libvirt/QEMU local (pool de stockage, image de base, disque,
   cloud-init, VM).
-- [`tp2/`](./tp2) — Déploiement multi-cloud (AWS/Azure/GCP) d'une VM Rocky
-  Linux 9.3 : correction de fichiers Terraform générés par IA vers des
-  configurations conformes à des attentes professionnelles.
+- [`tp2/`](./tp2) — Multi-cloud : correction de fichiers Terraform générés
+  par IA (VM Rocky Linux 9 sur AWS/Azure/GCP) vers des configurations
+  professionnelles, puis réplication DRBD d'un LV entre AWS et Azure.
 
 D'autres TPs seront ajoutés ici sous forme de nouveaux dossiers suivant le
 même schéma :
